@@ -2,22 +2,31 @@
   "version": 2,
   "builds": [
     {
-      "src": "api/thoughts.js",
+      "src": "backend/api/thoughts.js",
       "use": "@vercel/node"
     },
     {
-      "src": "random-thoughts-about-you.html",
+      "src": "frontend/index.html",
+      "use": "@vercel/static"
+    },
+    {
+      "src": "frontend/*.jpeg",
       "use": "@vercel/static"
     }
   ],
   "routes": [
     {
       "src": "/api/thoughts",
-      "dest": "/api/thoughts.js"
+      "dest": "/backend/api/thoughts.js"
     },
     {
       "src": "/(.*)",
-      "dest": "/random-thoughts-about-you.html"
+      "dest": "/frontend/index.html"
     }
-  ]
+  ],
+  "functions": {
+    "backend/api/thoughts.js": {
+      "maxDuration": 10
+    }
+  }
 }
