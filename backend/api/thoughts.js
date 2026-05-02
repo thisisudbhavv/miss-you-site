@@ -27,14 +27,10 @@ const db = new sqlite3.Database('/tmp/thoughts.db', (err) => {
 // Insert initial thoughts if database is empty
 function insertInitialThoughts() {
   const initialThoughts = [
-    { emoji: "🥺", text: "You're cute\n(just saying)" },
-    { emoji: "📞", text: "I miss your voice" },
-    { emoji: "🤗", text: "You owe me a hug btw" },
-    { emoji: "😤", text: "I was gonna text you but... here we are" },
-    { emoji: "🌙", text: "You randomly pop into my head at 2 am" },
-    { emoji: "🎵", text: "That one song reminded me of you again" },
-    { emoji: "😭", text: "Why do you have to be so... you" },
-    { emoji: "🍕", text: "I wanna eat pizza with you" }
+    { emoji: "🥺", text: "You're my cutie patotie" },
+    { emoji: "🤗", text: "I want to hug you so tightly right now" },
+    { emoji: "💕", text: "Jb khali baithate to hme apni cute memories yaad aati, remember jb hmlog holi ke time sath the aur bruno gye the and we played jenga there. Kitna pyara din tha vo." },
+    { emoji: "💋", text: "Labubu my bebu" }
   ];
 
   db.get("SELECT COUNT(*) as count FROM thoughts", (err, row) => {
