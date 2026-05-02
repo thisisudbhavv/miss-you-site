@@ -1,0 +1,13 @@
+{
+  "name": "random-thoughts-frontend",
+  "version": "1.0.0",
+  "description": "Frontend for random thoughts webpage",
+  "main": "index.html",
+  "scripts": {
+    "start": "python -m http.server 8080",
+    "dev": "python -m http.server 8080"
+  },
+  "keywords": ["love", "thoughts", "romantic"],
+  "author": "You & Your Partner",
+  "license": "MIT"
+}

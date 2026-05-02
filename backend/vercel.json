@@ -1,0 +1,20 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "api/thoughts.js",
+      "use": "@vercel/node"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/thoughts",
+      "dest": "/api/thoughts.js"
+    }
+  ],
+  "functions": {
+    "api/thoughts.js": {
+      "maxDuration": 10
+    }
+  }
+}

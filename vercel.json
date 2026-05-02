@@ -1,0 +1,23 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "api/thoughts.js",
+      "use": "@vercel/node"
+    },
+    {
+      "src": "random-thoughts-about-you.html",
+      "use": "@vercel/static"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/thoughts",
+      "dest": "/api/thoughts.js"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/random-thoughts-about-you.html"
+    }
+  ]
+}
