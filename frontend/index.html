@@ -700,6 +700,37 @@
     /* Scroll-reveal helper */
     .reveal { opacity: 0; transform: translateY(30px); transition: opacity 0.7s ease, transform 0.7s ease; }
     .reveal.visible { opacity: 1; transform: translateY(0); }
+
+    /* ── Loading State ── */
+    .loading-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 1rem;
+      animation: fadeSlideUp 0.8s ease;
+    }
+
+    .loading-spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid var(--pink-soft);
+      border-top: 3px solid var(--pink-dark);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    .loading-text {
+      font-family: 'Caveat', cursive;
+      font-size: 1.2rem;
+      color: var(--text-soft);
+      opacity: 0.8;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
   </style>
 </head>
 <body>
@@ -853,16 +884,58 @@
        LOAD THOUGHTS FROM DATABASE
     ────────────────────────────────────── */
     async function loadThoughts() {
-      try {
-        const response = await fetch(`${API_BASE}/thoughts`);
-        if (!response.ok) throw new Error('Failed to load thoughts');
-        
-        allThoughts = await response.json();
-        renderThoughts();
-      } catch (error) {
-        console.error('Error loading thoughts:', error);
-        // Fallback to local thoughts if server is down
-        loadFallbackThoughts();
+      showLoadingState();
+      
+      // Retry logic with exponential backoff
+      let retryCount = 0;
+      const maxRetries = 3;
+      const retryDelays = [1000, 2000, 3000]; // 1s, 2s, 3s
+      
+      while (retryCount <= maxRetries) {
+        try {
+          const response = await fetch(`${API_BASE}/thoughts`, {
+            signal: AbortSignal.timeout(10000) // 10 second timeout
+          });
+          
+          if (!response.ok) throw new Error('Failed to load thoughts');
+          
+          allThoughts = await response.json();
+          hideLoadingState();
+          renderThoughts();
+          return; // Success, exit function
+          
+        } catch (error) {
+          console.error(`Attempt ${retryCount + 1} failed:`, error.message);
+          retryCount++;
+          
+          if (retryCount <= maxRetries) {
+            // Wait before retrying
+            await new Promise(resolve => setTimeout(resolve, retryDelays[retryCount - 1] || 3000));
+          }
+        }
+      }
+      
+      // All retries failed, use fallback
+      console.log('All retries failed, using fallback thoughts');
+      hideLoadingState();
+      loadFallbackThoughts();
+    }
+
+    function showLoadingState() {
+      const grid = document.getElementById('notes-grid');
+      grid.innerHTML = `
+        <div class="loading-container" style="grid-column: 1 / -1; text-align: center; padding: 2rem;">
+          <div class="loading-spinner"></div>
+          <p class="loading-text">Loading memories...</p>
+        </div>
+      `;
+    }
+
+    function hideLoadingState() {
+      const loadingContainer = document.querySelector('.loading-container');
+      if (loadingContainer) {
+        loadingContainer.style.opacity = '0';
+        setTimeout(() => loadingContainer.remove(), 300);
       }
     }
 
@@ -894,31 +967,47 @@
 
     // Save new thought to database
     async function saveThought(emoji, text) {
-      try {
-        const response = await fetch(`${API_BASE}/thoughts`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ emoji, text })
-        });
-        
-        if (!response.ok) throw new Error('Failed to save thought');
-        
-        const newThought = await response.json();
-        // Add to local array and re-render
-        allThoughts.unshift(newThought);
-        renderThoughts();
-        
-        return true;
-      } catch (error) {
-        console.error('Error saving thought:', error);
-        // Fallback: add to local array only
-        const newThought = { emoji, text, id: Date.now() };
-        allThoughts.unshift(newThought);
-        renderThoughts();
-        return false;
+      let retryCount = 0;
+      const maxRetries = 2;
+      const retryDelays = [500, 1000]; // 0.5s, 1s
+      
+      while (retryCount <= maxRetries) {
+        try {
+          const response = await fetch(`${API_BASE}/thoughts`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ emoji, text }),
+            signal: AbortSignal.timeout(5000) // 5 second timeout
+          });
+          
+          if (!response.ok) throw new Error('Failed to save thought');
+          
+          const newThought = await response.json();
+          // Add to local array and re-render
+          allThoughts.unshift(newThought);
+          renderThoughts();
+          
+          return true; // Success
+          
+        } catch (error) {
+          console.error(`Save attempt ${retryCount + 1} failed:`, error.message);
+          retryCount++;
+          
+          if (retryCount <= maxRetries) {
+            // Wait before retrying
+            await new Promise(resolve => setTimeout(resolve, retryDelays[retryCount - 1] || 1000));
+          }
+        }
       }
+      
+      // All retries failed, fallback to local only
+      console.log('Save failed, adding to local only');
+      const newThought = { emoji, text, id: Date.now() };
+      allThoughts.unshift(newThought);
+      renderThoughts();
+      return false;
     }
 
     // Load thoughts when page loads
