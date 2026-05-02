@@ -23,10 +23,5 @@
       "src": "/(.*)",
       "dest": "/frontend/index.html"
     }
-  ],
-  "functions": {
-    "backend/api/thoughts.js": {
-      "maxDuration": 10
-    }
-  }
+  ]
 }
