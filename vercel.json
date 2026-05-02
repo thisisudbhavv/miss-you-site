@@ -20,6 +20,14 @@
       "dest": "/backend/api/thoughts.js"
     },
     {
+      "src": "/api/(.*)",
+      "dest": "/backend/api/$1"
+    },
+    {
+      "src": "/(.*\\.(jpeg|jpg|png|gif|css|js|ico|svg))",
+      "dest": "/frontend/$1"
+    },
+    {
       "src": "/(.*)",
       "dest": "/frontend/index.html"
     }

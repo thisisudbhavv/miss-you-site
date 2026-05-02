@@ -121,3 +121,6 @@ export default function handler(req, res) {
     res.status(405).json({ error: 'Method not allowed' });
   }
 }
+
+// Export for Vercel
+module.exports = handler;
