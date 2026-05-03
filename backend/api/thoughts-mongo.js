@@ -11,27 +11,43 @@ let collection;
 
 // Initialize MongoDB connection
 async function connectToDatabase() {
-  if (client && client.isConnected()) {
+  if (client && client.topology && client.topology.isConnected()) {
     return db;
   }
 
   try {
-    client = new MongoClient(MONGODB_URI);
+    console.log('Connecting to MongoDB...');
+    console.log('URI:', MONGODB_URI.replace(/\/\/[^:]+:[^@]+@/, '//***:***@'));
+    
+    client = new MongoClient(MONGODB_URI, {
+      serverSelectionTimeoutMS: 10000,
+      socketTimeoutMS: 10000,
+      connectTimeoutMS: 10000,
+    });
+    
     await client.connect();
     db = client.db(DB_NAME);
     collection = db.collection(COLLECTION_NAME);
     
-    console.log('Connected to MongoDB');
+    console.log('✅ Connected to MongoDB successfully');
+    console.log('Database:', DB_NAME);
+    console.log('Collection:', COLLECTION_NAME);
+    
+    // Test connection
+    await db.admin().ping();
+    console.log('✅ MongoDB ping successful');
     
     // Create indexes for better performance
     await collection.createIndex({ created_at: -1 });
+    console.log('✅ Index created on created_at');
     
     // Insert initial thoughts if collection is empty
     await insertInitialThoughts();
     
     return db;
   } catch (error) {
-    console.error('MongoDB connection error:', error);
+    console.error('❌ MongoDB connection error:', error);
+    console.error('Error details:', error.message);
     throw error;
   }
 }
@@ -39,8 +55,12 @@ async function connectToDatabase() {
 // Insert initial thoughts if database is empty
 async function insertInitialThoughts() {
   try {
+    console.log('Checking if collection is empty...');
     const count = await collection.countDocuments();
+    console.log('Current document count:', count);
+    
     if (count === 0) {
+      console.log('Collection is empty, inserting initial thoughts...');
       const initialThoughts = [
         { 
           emoji: "🥺", 
@@ -64,16 +84,22 @@ async function insertInitialThoughts() {
         }
       ];
 
-      await collection.insertMany(initialThoughts);
-      console.log('Initial thoughts inserted into MongoDB');
+      const result = await collection.insertMany(initialThoughts);
+      console.log('✅ Initial thoughts inserted into MongoDB:', result.insertedCount, 'documents');
+    } else {
+      console.log('✅ Collection already has', count, 'documents');
     }
   } catch (error) {
-    console.error('Error inserting initial thoughts:', error);
+    console.error('❌ Error inserting initial thoughts:', error);
+    console.error('Error details:', error.message);
+    throw error;
   }
 }
 
 // Main handler function for Vercel
 module.exports = async (req, res) => {
+  console.log('🚀 API Request:', req.method, req.url);
+  
   // Set CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
@@ -81,30 +107,37 @@ module.exports = async (req, res) => {
 
   // Handle preflight requests
   if (req.method === 'OPTIONS') {
+    console.log('✅ CORS preflight handled');
     return res.status(200).end();
   }
 
   try {
     // Connect to database
+    console.log('📡 Connecting to database...');
     await connectToDatabase();
+    console.log('✅ Database connected');
     
     const method = req.method;
     const { query } = req;
 
     if (method === 'GET') {
+      console.log('📖 Getting all thoughts...');
       // Get all thoughts
       const thoughts = await collection
         .find({})
         .sort({ created_at: -1 })
         .toArray();
       
+      console.log('✅ Retrieved', thoughts.length, 'thoughts');
       res.status(200).json(thoughts);
     }
     else if (method === 'POST') {
+      console.log('➕ Adding new thought...');
       // Add a new thought
       const { emoji, text } = req.body;
       
       if (!emoji || !text) {
+        console.log('❌ Missing emoji or text');
         return res.status(400).json({ error: 'Emoji and text are required' });
       }
 
@@ -114,12 +147,16 @@ module.exports = async (req, res) => {
         created_at: new Date()
       };
 
+      console.log('📝 Inserting thought:', { emoji, text: text.substring(0, 50) + '...' });
+
       const result = await collection.insertOne(newThought);
       const insertedThought = await collection.findOne({ _id: result.insertedId });
       
+      console.log('✅ Thought inserted successfully:', result.insertedId);
       res.status(201).json(insertedThought);
     }
     else if (method === 'DELETE') {
+      console.log('🗑️ Deleting all thoughts...');
       // Delete all thoughts (database cleanup)
       const { confirm } = query;
       
@@ -128,16 +165,22 @@ module.exports = async (req, res) => {
       }
 
       const result = await collection.deleteMany({});
+      console.log('✅ Deleted', result.deletedCount, 'thoughts');
       res.status(200).json({ 
         message: 'All thoughts deleted successfully',
         deletedCount: result.deletedCount 
       });
     }
     else {
+      console.log('❌ Method not allowed:', method);
       res.status(405).json({ error: 'Method not allowed' });
     }
   } catch (error) {
-    console.error('API Error:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    console.error('❌ API Error:', error);
+    console.error('Error stack:', error.stack);
+    res.status(500).json({ 
+      error: 'Internal server error',
+      details: error.message 
+    });
   }
 };

@@ -2,7 +2,7 @@
   "version": 2,
   "builds": [
     {
-      "src": "backend/api/thoughts.js",
+      "src": "backend/api/thoughts-mongo.js",
       "use": "@vercel/node"
     },
     {
@@ -17,11 +17,7 @@
   "routes": [
     {
       "src": "/api/thoughts",
-      "dest": "/backend/api/thoughts.js"
-    },
-    {
-      "src": "/api/(.*)",
-      "dest": "/backend/api/$1"
+      "dest": "/backend/api/thoughts-mongo.js"
     },
     {
       "src": "/(.*\\.(jpeg|jpg|png|gif|css|js|ico|svg))",
