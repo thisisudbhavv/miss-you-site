@@ -1,0 +1,8 @@
+{
+  "name": "Random Thoughts About You",
+  "description": "A romantic thoughts sharing app for couples 💕",
+  "permissions": [],
+  "capabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

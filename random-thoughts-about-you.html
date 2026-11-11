@@ -4,6 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Random Thoughts About You 💭</title>
+  <meta name="description" content="A romantic thoughts sharing app for couples 💕" />
+  <meta property="og:title" content="Random Thoughts About You 💭" />
+  <meta property="og:description" content="A romantic thoughts sharing app for couples 💕" />
   <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;600;700&family=Nunito:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet" />
   <style>
     /* ── Reset & Base ── */
@@ -696,9 +699,215 @@
     @media (min-width: 1024px) {
       #notes-grid { grid-template-columns: repeat(4, 1fr); }
     }
+
+    /* ══════════════════════════════════════
+       SOFT LAUNCH / CUTE LOADING SCREEN
+    ══════════════════════════════════════ */
+    #soft-launch-curtain {
+      position: fixed;
+      inset: 0;
+      z-index: 99999;
+      background: var(--white);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+      user-select: none;
+      transition: opacity 0.65s cubic-bezier(0.16, 1, 0.3, 1), transform 0.65s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.65s;
+    }
+
+    #soft-launch-curtain::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(ellipse at 50% 40%, rgba(255, 214, 224, 0.65) 0%, transparent 60%),
+        radial-gradient(ellipse at 20% 80%, rgba(232, 213, 245, 0.5) 0%, transparent 55%),
+        radial-gradient(ellipse at 80% 20%, rgba(255, 224, 204, 0.45) 0%, transparent 50%);
+      pointer-events: none;
+    }
+
+    #soft-launch-curtain.fade-out {
+      opacity: 0;
+      transform: scale(1.04);
+      pointer-events: none;
+      visibility: hidden;
+    }
+
+    .curtain-content {
+      position: relative;
+      z-index: 2;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      gap: 1.25rem;
+      max-width: 420px;
+    }
+
+    .curtain-heart-wrapper {
+      position: relative;
+      width: 100px;
+      height: 100px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .curtain-heart-pulse {
+      position: absolute;
+      width: 90px;
+      height: 90px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(255, 133, 161, 0.35) 0%, transparent 70%);
+      animation: heartAura 1.8s ease-out infinite;
+    }
+
+    @keyframes heartAura {
+      0%   { transform: scale(0.85); opacity: 0.8; }
+      50%  { transform: scale(1.45); opacity: 0; }
+      100% { transform: scale(1.45); opacity: 0; }
+    }
+
+    .curtain-heart-svg {
+      width: 72px;
+      height: 72px;
+      filter: drop-shadow(0 10px 24px rgba(255, 133, 161, 0.45));
+      animation: sweetHeartbeat 1.5s ease-in-out infinite;
+      transform-origin: center;
+    }
+
+    @keyframes sweetHeartbeat {
+      0%, 100% { transform: scale(1); }
+      14%      { transform: scale(1.18); }
+      28%      { transform: scale(1.02); }
+      42%      { transform: scale(1.14); }
+      70%      { transform: scale(1); }
+    }
+
+    .curtain-title {
+      font-family: 'Caveat', cursive;
+      font-size: clamp(2rem, 6vw, 2.75rem);
+      font-weight: 700;
+      color: var(--text-main);
+      line-height: 1.15;
+      margin: 0;
+    }
+
+    .curtain-title span {
+      color: var(--pink-dark);
+    }
+
+    .curtain-note-box {
+      min-height: 2.2rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .curtain-note {
+      font-family: 'Caveat', cursive;
+      font-size: clamp(1.25rem, 3.8vw, 1.6rem);
+      font-weight: 600;
+      color: var(--text-soft);
+      line-height: 1.3;
+      margin: 0;
+      transition: opacity 0.3s ease, transform 0.3s ease;
+    }
+
+    .curtain-note.switching {
+      opacity: 0;
+      transform: translateY(-4px);
+    }
+
+    .curtain-dots {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 0.25rem;
+    }
+
+    .curtain-dots span {
+      width: 7px;
+      height: 7px;
+      background: var(--pink-dark);
+      border-radius: 50%;
+      opacity: 0.6;
+      animation: cuteDot 1.4s infinite ease-in-out both;
+    }
+
+    .curtain-dots span:nth-child(1) { animation-delay: -0.32s; }
+    .curtain-dots span:nth-child(2) { animation-delay: -0.16s; }
+    .curtain-dots span:nth-child(3) { animation-delay: 0s; }
+
+    @keyframes cuteDot {
+      0%, 80%, 100% { transform: scale(0.7); opacity: 0.4; }
+      40%           { transform: scale(1.2); opacity: 1; }
+    }
+
+    .curtain-particles {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      overflow: hidden;
+      z-index: 1;
+    }
+
+    .curtain-float-heart {
+      position: absolute;
+      bottom: -30px;
+      pointer-events: none;
+      animation: floatUpSoft 4s linear infinite;
+      opacity: 0;
+      user-select: none;
+    }
+
+    @keyframes floatUpSoft {
+      0% {
+        transform: translateY(0) rotate(0deg);
+        opacity: 0;
+      }
+      20% {
+        opacity: 0.65;
+      }
+      80% {
+        opacity: 0.45;
+      }
+      100% {
+        transform: translateY(-110vh) rotate(25deg);
+        opacity: 0;
+      }
+    }
   </style>
 </head>
 <body>
+
+  <!-- ── Soft Launch Loading Screen ── -->
+  <div id="soft-launch-curtain" role="status" aria-live="polite">
+    <div class="curtain-particles" id="curtain-particles"></div>
+    <div class="curtain-content">
+      <div class="curtain-heart-wrapper">
+        <div class="curtain-heart-pulse"></div>
+        <svg class="curtain-heart-svg" viewBox="0 0 24 24">
+          <defs>
+            <linearGradient id="heartGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#ff85a1" />
+              <stop offset="100%" stop-color="#ffb3c6" />
+            </linearGradient>
+          </defs>
+          <path fill="url(#heartGradient)" d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+        </svg>
+      </div>
+      <h2 class="curtain-title">Opening <span>Memories</span>…</h2>
+      <div class="curtain-note-box">
+        <p class="curtain-note" id="curtain-note">Gathering our favorite memories…</p>
+      </div>
+      <div class="curtain-dots">
+        <span></span><span></span><span></span>
+      </div>
+    </div>
+  </div>
 
   <!-- Cursor -->
   <div id="cursor"></div>
@@ -813,10 +1022,76 @@
 
   <script>
     /* ──────────────────────────────────────
+       SOFT LAUNCH CONTROLLER
+    ────────────────────────────────────── */
+    const softLaunchCurtain = document.getElementById('soft-launch-curtain');
+    const curtainNote = document.getElementById('curtain-note');
+    const curtainParticles = document.getElementById('curtain-particles');
+
+    const romanticPhrases = [
+      "Gathering our favorite memories…",
+      "Tying a pastel ribbon around cute thoughts…",
+      "Remembering that smile you have…",
+      "Finding all the little moments…",
+      "Almost ready for you, cutie 💕"
+    ];
+
+    let noteIndex = 0;
+    let noteInterval = null;
+
+    if (curtainNote) {
+      noteInterval = setInterval(() => {
+        noteIndex = (noteIndex + 1) % romanticPhrases.length;
+        curtainNote.classList.add('switching');
+        setTimeout(() => {
+          curtainNote.textContent = romanticPhrases[noteIndex];
+          curtainNote.classList.remove('switching');
+        }, 220);
+      }, 1600);
+    }
+
+    // Spawn gentle floating background hearts in curtain
+    if (curtainParticles) {
+      const particleGlyphs = ['🩷', '🌸', '✨', '💕', '☁️', '💖'];
+      for (let i = 0; i < 9; i++) {
+        const p = document.createElement('span');
+        p.className = 'curtain-float-heart';
+        p.textContent = particleGlyphs[i % particleGlyphs.length];
+        p.style.left = (8 + (i * 10) + Math.random() * 5) + '%';
+        p.style.fontSize = (12 + Math.random() * 12) + 'px';
+        p.style.animationDuration = (3.2 + Math.random() * 2) + 's';
+        p.style.animationDelay = (i * 0.45) + 's';
+        curtainParticles.appendChild(p);
+      }
+    }
+
+    let softLaunchDismissed = false;
+    const launchStartTime = Date.now();
+    const MIN_LAUNCH_DWELL_MS = 1000;
+
+    function dismissSoftLaunch() {
+      if (softLaunchDismissed || !softLaunchCurtain) return;
+      softLaunchDismissed = true;
+
+      const elapsed = Date.now() - launchStartTime;
+      const remainingDwell = Math.max(0, MIN_LAUNCH_DWELL_MS - elapsed);
+
+      setTimeout(() => {
+        if (noteInterval) clearInterval(noteInterval);
+        softLaunchCurtain.classList.add('fade-out');
+        setTimeout(() => {
+          softLaunchCurtain.remove();
+        }, 750);
+      }, remainingDwell);
+    }
+
+    setTimeout(dismissSoftLaunch, 3800);
+
+    /* ──────────────────────────────────────
        DATA
     ────────────────────────────────────── */
-    // API base URL - change this if your server runs on different host/port
-    const API_BASE = 'http://localhost:3000/api';
+    // API base URL - relative /api route
+    const API_BASE = '/api';
     
     // Local thoughts array (will be populated from database)
     let allThoughts = [];
@@ -855,10 +1130,12 @@
         
         allThoughts = await response.json();
         renderThoughts();
+        dismissSoftLaunch();
       } catch (error) {
         console.error('Error loading thoughts:', error);
         // Fallback to local thoughts if server is down
         loadFallbackThoughts();
+        dismissSoftLaunch();
       }
     }
 

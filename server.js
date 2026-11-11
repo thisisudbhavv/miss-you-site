@@ -1,136 +1,219 @@
 const express = require('express');
-const sqlite3 = require('sqlite3').verbose();
 const cors = require('cors');
 const path = require('path');
+const fs = require('fs');
+
+let sqlite3;
+try {
+  sqlite3 = require('sqlite3').verbose();
+} catch (e) {
+  console.warn('sqlite3 native addon not available, using in-memory store:', e.message);
+}
 
 const app = express();
 const PORT = 3000;
+const HOST = '0.0.0.0';
 
 // Middleware
 app.use(cors());
 app.use(express.json());
-app.use(express.static(path.join(__dirname)));
 
-// Initialize SQLite database
-const db = new sqlite3.Database('./thoughts.db', (err) => {
-  if (err) {
-    console.error('Error opening database:', err.message);
-  } else {
-    console.log('Connected to SQLite database');
-    // Create thoughts table if it doesn't exist
-    db.run(`CREATE TABLE IF NOT EXISTS thoughts (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      emoji TEXT NOT NULL,
-      text TEXT NOT NULL,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    )`, (err) => {
+// In-memory fallback and seed thoughts
+const initialThoughts = [
+  { emoji: "🥺", text: "You're my cutie patotie" },
+  { emoji: "🤗", text: "I want to hug you so tightly right now" },
+  { emoji: "💕", text: "Jb khali baithate to hme apni cute memories yaad aati, remember jb hmlog holi ke time sath the aur bruno gye the and we played jenga there. Kitna pyara din tha vo." },
+  { emoji: "💋", text: "Labubu my bebu" },
+  { emoji: "🥺", text: "You're cute\n(just saying)" },
+  { emoji: "📞", text: "I miss your voice" },
+  { emoji: "🤗", text: "You owe me a hug btw" },
+  { emoji: "😤", text: "I was gonna text you but... here we are" },
+  { emoji: "🌙", text: "You randomly pop into my head at 2 am" },
+  { emoji: "🎵", text: "That one song reminded me of you again" },
+  { emoji: "😭", text: "Why do you have to be so... you" },
+  { emoji: "🍕", text: "I wanna eat pizza with you" }
+];
+
+let inMemoryThoughts = initialThoughts.map((t, idx) => ({
+  id: idx + 1,
+  emoji: t.emoji,
+  text: t.text,
+  created_at: new Date(Date.now() - (initialThoughts.length - idx) * 60000).toISOString()
+}));
+
+let nextId = inMemoryThoughts.length + 1;
+let db = null;
+let dbReady = false;
+
+if (sqlite3) {
+  try {
+    const dbPath = path.join(__dirname, 'thoughts.db');
+    db = new sqlite3.Database(dbPath, (err) => {
       if (err) {
-        console.error('Error creating table:', err.message);
+        console.warn('Could not open SQLite database, falling back to in-memory store:', err.message);
+        db = null;
       } else {
-        console.log('Thoughts table ready');
-        // Insert initial thoughts if table is empty
-        insertInitialThoughts();
+        console.log('Connected to SQLite database at', dbPath);
+        db.run(`CREATE TABLE IF NOT EXISTS thoughts (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          emoji TEXT NOT NULL,
+          text TEXT NOT NULL,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )`, (createErr) => {
+          if (createErr) {
+            console.error('Error creating thoughts table:', createErr.message);
+          } else {
+            db.get("SELECT COUNT(*) as count FROM thoughts", (countErr, row) => {
+              if (!countErr && row && row.count === 0) {
+                const stmt = db.prepare("INSERT INTO thoughts (emoji, text) VALUES (?, ?)");
+                initialThoughts.forEach((t) => {
+                  stmt.run(t.emoji, t.text);
+                });
+                stmt.finalize(() => {
+                  console.log('Initial thoughts seeded into SQLite database');
+                  dbReady = true;
+                });
+              } else {
+                dbReady = true;
+              }
+            });
+          }
+        });
       }
     });
+  } catch (err) {
+    console.warn('SQLite initialization error, falling back to in-memory store:', err.message);
+    db = null;
+  }
+}
+
+// Serve static assets from root and frontend folder
+app.use(express.static(path.join(__dirname, 'frontend')));
+app.use(express.static(path.join(__dirname)));
+
+// Health check
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', db: dbReady ? 'sqlite' : 'memory' });
+});
+
+// GET all thoughts
+app.get('/api/thoughts', (req, res) => {
+  if (db && dbReady) {
+    db.all("SELECT * FROM thoughts ORDER BY created_at DESC, id DESC", (err, rows) => {
+      if (err) {
+        console.warn('SQLite query error, falling back to memory:', err.message);
+        res.json(inMemoryThoughts);
+      } else {
+        res.json(rows);
+      }
+    });
+  } else {
+    res.json(inMemoryThoughts);
   }
 });
 
-// Insert initial thoughts if database is empty
-function insertInitialThoughts() {
-  const initialThoughts = [
-    { emoji: "🥺", text: "You're cute\\n(just saying)" },
-    { emoji: "📞", text: "I miss your voice" },
-    { emoji: "🤗", text: "You owe me a hug btw" },
-    { emoji: "😤", text: "I was gonna text you but... here we are" },
-    { emoji: "🌙", text: "You randomly pop into my head at 2 am" },
-    { emoji: "🎵", text: "That one song reminded me of you again" },
-    { emoji: "😭", text: "Why do you have to be so... you" },
-    { emoji: "🍕", text: "I wanna eat pizza with you" }
-  ];
-
-  db.get("SELECT COUNT(*) as count FROM thoughts", (err, row) => {
-    if (!err && row.count === 0) {
-      const stmt = db.prepare("INSERT INTO thoughts (emoji, text) VALUES (?, ?)");
-      initialThoughts.forEach(thought => {
-        stmt.run(thought.emoji, thought.text);
-      });
-      stmt.finalize();
-      console.log('Initial thoughts inserted');
-    }
-  });
-}
-
-// API Routes
-
-// Get all thoughts
-app.get('/api/thoughts', (req, res) => {
-  db.all("SELECT * FROM thoughts ORDER BY created_at DESC", (err, rows) => {
-    if (err) {
-      res.status(500).json({ error: err.message });
-      return;
-    }
-    res.json(rows);
-  });
-});
-
-// Add a new thought
+// POST a new thought
 app.post('/api/thoughts', (req, res) => {
   const { emoji, text } = req.body;
-  
   if (!emoji || !text) {
     return res.status(400).json({ error: 'Emoji and text are required' });
   }
 
-  db.run(
-    "INSERT INTO thoughts (emoji, text) VALUES (?, ?)",
-    [emoji, text],
-    function(err) {
-      if (err) {
-        res.status(500).json({ error: err.message });
-        return;
+  const created_at = new Date().toISOString();
+
+  if (db && dbReady) {
+    db.run(
+      "INSERT INTO thoughts (emoji, text) VALUES (?, ?)",
+      [emoji, text],
+      function (err) {
+        if (err) {
+          console.warn('SQLite insert error, falling back to memory:', err.message);
+          const newThought = { id: nextId++, emoji, text, created_at };
+          inMemoryThoughts.unshift(newThought);
+          return res.status(201).json(newThought);
+        }
+        const insertedThought = { id: this.lastID, emoji, text, created_at };
+        inMemoryThoughts.unshift(insertedThought);
+        res.status(201).json(insertedThought);
       }
-      res.json({ 
-        id: this.lastID, 
-        emoji, 
-        text,
-        created_at: new Date().toISOString()
-      });
-    }
-  );
+    );
+  } else {
+    const newThought = { id: nextId++, emoji, text, created_at };
+    inMemoryThoughts.unshift(newThought);
+    res.status(201).json(newThought);
+  }
 });
 
-// Delete a thought (optional, for future use)
+// DELETE a single thought
 app.delete('/api/thoughts/:id', (req, res) => {
-  const id = req.params.id;
-  
-  db.run("DELETE FROM thoughts WHERE id = ?", id, function(err) {
-    if (err) {
-      res.status(500).json({ error: err.message });
-      return;
-    }
+  const id = parseInt(req.params.id, 10);
+  inMemoryThoughts = inMemoryThoughts.filter(t => t.id !== id);
+
+  if (db && dbReady) {
+    db.run("DELETE FROM thoughts WHERE id = ?", [id], (err) => {
+      if (err) {
+        console.warn('SQLite delete error:', err.message);
+      }
+      res.json({ message: 'Thought deleted successfully' });
+    });
+  } else {
     res.json({ message: 'Thought deleted successfully' });
-  });
+  }
 });
 
-// Serve the main HTML file
+// DELETE all thoughts (optional cleanup)
+app.delete('/api/thoughts', (req, res) => {
+  if (req.query.confirm !== 'yes') {
+    return res.status(400).json({ error: 'Add ?confirm=yes to delete all thoughts' });
+  }
+
+  inMemoryThoughts = [];
+  if (db && dbReady) {
+    db.run("DELETE FROM thoughts", function (err) {
+      if (err) {
+        return res.status(500).json({ error: err.message });
+      }
+      res.json({ message: 'All thoughts deleted successfully', deletedCount: this.changes });
+    });
+  } else {
+    res.json({ message: 'All thoughts deleted successfully' });
+  }
+});
+
+// Serve main page
 app.get('/', (req, res) => {
+  const frontendIndex = path.join(__dirname, 'frontend', 'index.html');
+  const rootIndex = path.join(__dirname, 'index.html');
+  const fallback = path.join(__dirname, 'random-thoughts-about-you.html');
+
+  if (fs.existsSync(frontendIndex)) {
+    res.sendFile(frontendIndex);
+  } else if (fs.existsSync(rootIndex)) {
+    res.sendFile(rootIndex);
+  } else {
+    res.sendFile(fallback);
+  }
+});
+
+// Serve alternate HTML if requested explicitly
+app.get('/random-thoughts-about-you.html', (req, res) => {
   res.sendFile(path.join(__dirname, 'random-thoughts-about-you.html'));
 });
 
-// Start server
-app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+// Start server on 0.0.0.0:3000
+const server = app.listen(PORT, HOST, () => {
+  console.log(`Server running at http://${HOST}:${PORT}`);
 });
 
-// Close database connection on server shutdown
+// Graceful shutdown
 process.on('SIGINT', () => {
-  console.log('\\nShutting down server...');
-  db.close((err) => {
-    if (err) {
-      console.error('Error closing database:', err.message);
-    } else {
+  console.log('\nShutting down server...');
+  if (db) {
+    db.close(() => {
       console.log('Database connection closed.');
-    }
+      process.exit(0);
+    });
+  } else {
     process.exit(0);
-  });
+  }
 });

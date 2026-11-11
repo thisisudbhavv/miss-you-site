@@ -2,12 +2,12 @@
   "name": "random-thoughts-app",
   "version": "1.0.0",
   "description": "A romantic thoughts sharing app for couples 💕",
-  "main": "backend/server.js",
+  "main": "server.js",
   "scripts": {
-    "start": "node backend/server.js",
-    "dev": "nodemon backend/server.js",
+    "start": "node server.js",
+    "dev": "node server.js",
     "build": "echo 'No build step needed'",
-    "install": "cd backend && npm install"
+    "lint": "node -c server.js"
   },
   "dependencies": {
     "express": "^4.18.2",
